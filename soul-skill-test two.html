@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Soul Resonance — Unique Skill Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cinzel:wght@400;600&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --void:#05040e;--deep:#0c0a1e;--surface:#12102a;--border:#2a2550;
+  --violet:#7c5cbf;--vglow:#9b7de8;--gold:#c9a84c;--gbright:#f0cc6e;
+  --soul:#b48ef5;--text:#e8e0f5;--muted:#8b82b0;--danger:#e07070;
+}
+html{scroll-behavior:smooth}
+body{
+  background:var(--void);color:var(--text);
+  font-family:'EB Garamond',serif;font-size:18px;line-height:1.7;
+  min-height:100vh;overflow-x:hidden;
+}
+#glCanvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+#app{position:relative;z-index:1;max-width:800px;margin:0 auto;padding:0 24px 100px}
+
+/* HEADER */
+.hd{text-align:center;padding:60px 0 40px}
+.eyebrow{font-family:'Cinzel',serif;font-size:11px;letter-spacing:4px;color:var(--gold);margin-bottom:18px;opacity:.85}
+.hd h1{font-family:'Cinzel Decorative',serif;font-size:clamp(24px,5vw,44px);font-weight:700;
+  line-height:1.2;margin-bottom:18px;
+  background:linear-gradient(135deg,#e8e0f5,#b48ef5,#c9a84c);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  filter:drop-shadow(0 0 30px rgba(155,125,232,.5))}
+.hd-sub{font-style:italic;color:var(--muted);font-size:16px;max-width:520px;margin:0 auto}
+
+/* ORB CONTAINER — Three.js canvas sits here */
+.orb-zone{display:flex;justify-content:center;margin:24px 0 36px;position:relative}
+#orbCanvas{display:block;border-radius:50%;cursor:none}
+.orb-label{
+  position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);
+  font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;
+  color:var(--vglow);opacity:.8;white-space:nowrap;transition:color .6s
+}
+.orb-label.gold{color:var(--gold)}
+
+/* PROGRESS */
+.prog-wrap{background:var(--surface);border:1px solid var(--border);border-radius:100px;
+  height:3px;margin-bottom:36px;overflow:hidden;position:relative}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--violet),var(--gold));
+  border-radius:100px;transition:width .6s cubic-bezier(.4,0,.2,1);
+  box-shadow:0 0 14px rgba(155,125,232,.7)}
+.prog-glow{position:absolute;top:-2px;width:30px;height:7px;
+  background:radial-gradient(ellipse,rgba(255,220,100,.8),transparent);
+  border-radius:50%;transition:left .6s cubic-bezier(.4,0,.2,1);pointer-events:none}
+
+/* CARD */
+.card{
+  background:linear-gradient(145deg,rgba(18,16,42,.96),rgba(10,8,26,.98));
+  border:1px solid var(--border);border-radius:18px;padding:36px 40px;
+  position:relative;overflow:hidden;animation:fadeUp .45s ease forwards;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--vglow),var(--gold),transparent);opacity:.4}
+.card::after{content:'';position:absolute;bottom:0;left:30%;right:30%;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(124,92,191,.3),transparent)}
+
+.q-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.q-num{font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;color:var(--gold);opacity:.8}
+.q-cat{font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+.q-text{font-size:21px;font-style:italic;color:var(--text);margin-bottom:24px;line-height:1.6}
+.r-note{font-size:13px;color:var(--soul);opacity:.75;margin-bottom:26px;
+  padding-left:16px;border-left:2px solid rgba(180,142,245,.3);font-style:italic}
+
+/* CHOICES */
+.choices{display:flex;flex-direction:column;gap:9px}
+.cbtn{
+  background:rgba(42,37,80,.35);border:1px solid var(--border);border-radius:10px;
+  padding:13px 20px;color:var(--text);font-family:'EB Garamond',serif;font-size:16px;
+  cursor:pointer;text-align:left;transition:all .2s ease;position:relative;overflow:hidden
+}
+.cbtn::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(124,92,191,.0),rgba(124,92,191,.08));
+  opacity:0;transition:opacity .2s}
+.cbtn:hover{border-color:var(--vglow);transform:translateX(5px);color:#fff}
+.cbtn:hover::after{opacity:1}
+.cbtn.sel{border-color:var(--gold);background:rgba(201,168,76,.08);color:var(--gbright)}
+.cbtn.sel::before{content:'✦';position:absolute;right:16px;top:50%;transform:translateY(-50%);
+  color:var(--gold);font-size:11px;animation:sparkIn .3s ease}
+
+/* TEXTAREA */
+.otxt{width:100%;background:rgba(42,37,80,.25);border:1px solid var(--border);
+  border-radius:10px;padding:16px 20px;color:var(--text);font-family:'EB Garamond',serif;
+  font-size:17px;line-height:1.65;resize:vertical;min-height:110px;transition:border-color .2s;outline:none}
+.otxt:focus{border-color:var(--vglow);box-shadow:0 0 20px rgba(155,125,232,.12)}
+.otxt::placeholder{color:var(--muted);font-style:italic}
+
+/* SLIDER */
+.sl-wrap{padding:6px 0}
+.sl-labels{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);
+  margin-bottom:10px;font-style:italic}
+input[type=range]{-webkit-appearance:none;width:100%;height:3px;
+  background:linear-gradient(90deg,var(--violet),var(--gold));border-radius:100px;outline:none;margin:8px 0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;
+  background:radial-gradient(circle,var(--gbright),var(--gold));border-radius:50%;
+  cursor:pointer;box-shadow:0 0 14px rgba(201,168,76,.7),0 0 30px rgba(201,168,76,.3)}
+.sl-val{text-align:center;font-family:'Cinzel',serif;font-size:12px;color:var(--gold);
+  margin-top:6px;letter-spacing:2px}
+
+/* NAV */
+.nav-row{display:flex;justify-content:flex-end;margin-top:26px;gap:10px}
+.btn-next{background:linear-gradient(135deg,#7c5cbf,#4a308a);border:none;border-radius:9px;
+  padding:12px 28px;color:#fff;font-family:'Cinzel',serif;font-size:12px;letter-spacing:2px;
+  cursor:pointer;transition:all .2s;box-shadow:0 4px 24px rgba(124,92,191,.35)}
+.btn-next:hover{transform:translateY(-2px);box-shadow:0 6px 32px rgba(124,92,191,.55)}
+.btn-next:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.btn-back{background:transparent;border:1px solid var(--border);border-radius:9px;
+  padding:12px 20px;color:var(--muted);font-family:'Cinzel',serif;font-size:12px;
+  letter-spacing:2px;cursor:pointer;transition:all .2s}
+.btn-back:hover{border-color:var(--violet);color:var(--text)}
+
+/* LOADING */
+.loading{text-align:center;padding:48px 20px;animation:fadeUp .5s ease}
+.loading h2{font-family:'Cinzel Decorative',serif;font-size:22px;color:var(--soul);margin-bottom:10px}
+.loading p{color:var(--muted);font-style:italic;margin-bottom:36px}
+.steps{display:flex;flex-direction:column;gap:14px;max-width:420px;margin:0 auto 40px;text-align:left}
+.step{display:flex;align-items:center;gap:14px;font-size:15px;color:var(--muted);transition:color .4s}
+.step.active{color:var(--soul)}.step.done{color:var(--gold)}
+.sdot{width:8px;height:8px;border-radius:50%;background:var(--border);flex-shrink:0;transition:all .4s}
+.step.active .sdot{background:var(--soul);box-shadow:0 0 12px var(--soul);animation:dotP 1s ease-in-out infinite}
+.step.done .sdot{background:var(--gold);box-shadow:0 0 8px var(--gold)}
+
+/* RESULT */
+.result{animation:fadeUp .7s ease}
+.r-hdr{text-align:center;padding:36px 0 30px}
+.r-eye{font-family:'Cinzel',serif;font-size:11px;letter-spacing:4px;color:var(--gold);
+  margin-bottom:14px;opacity:.9}
+.skill-name{
+  font-family:'Cinzel Decorative',serif;font-size:clamp(26px,6vw,50px);font-weight:700;
+  background:linear-gradient(135deg,var(--gbright),var(--soul),var(--gold));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  line-height:1.2;filter:drop-shadow(0 0 24px rgba(201,168,76,.4));
+  animation:skillReveal 1s ease forwards
+}
+.skill-rank{font-family:'Cinzel',serif;font-size:12px;letter-spacing:3px;color:var(--vglow);margin-top:10px}
+.r-div{text-align:center;color:var(--gold);font-size:16px;letter-spacing:14px;margin:24px 0;opacity:.45}
+.rsec{background:linear-gradient(145deg,rgba(18,16,42,.96),rgba(10,8,26,.98));
+  border:1px solid var(--border);border-radius:14px;padding:28px 32px;margin-bottom:18px;
+  position:relative;animation:fadeUp .5s ease both}
+.rsec:nth-child(1){animation-delay:.1s}.rsec:nth-child(2){animation-delay:.2s}
+.rsec:nth-child(3){animation-delay:.3s}.rsec:nth-child(4){animation-delay:.4s}
+.rsec::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.25}
+.rsec h3{font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;color:var(--gold);
+  margin-bottom:14px;opacity:.8}
+.rsec p,.rsec li{font-size:17px;color:var(--text);line-height:1.8}
+.rsec ul{list-style:none;display:flex;flex-direction:column;gap:8px}
+.rsec li::before{content:'✦ ';color:var(--vglow);font-size:11px}
+.r-quote{font-style:italic;color:var(--soul);font-size:16px;
+  border-left:2px solid rgba(180,142,245,.35);padding-left:18px;margin-top:14px;line-height:1.75}
+
+/* INTRO */
+.intro{text-align:center;padding:16px 0 36px;animation:fadeUp .6s ease}
+.intro p{color:var(--muted);font-size:17px;max-width:560px;margin:0 auto 18px}
+.intro .warn{font-size:14px;color:var(--vglow);opacity:.75;font-style:italic;margin-bottom:34px}
+.start-btn{
+  background:linear-gradient(135deg,#7c5cbf,#4a2f8a);
+  border:1px solid rgba(155,125,232,.4);border-radius:12px;
+  padding:17px 52px;color:#fff;font-family:'Cinzel Decorative',serif;
+  font-size:15px;letter-spacing:2px;cursor:pointer;transition:all .3s;
+  box-shadow:0 0 50px rgba(124,92,191,.25),inset 0 1px 0 rgba(255,255,255,.1)
+}
+.start-btn:hover{transform:translateY(-3px);box-shadow:0 8px 48px rgba(124,92,191,.55)}
+.err-msg{background:rgba(224,112,112,.1);border:1px solid rgba(224,112,112,.3);
+  border-radius:8px;padding:13px 18px;color:var(--danger);font-size:14px;margin-top:14px}
+.restart-btn{display:block;margin:40px auto 0;background:transparent;
+  border:1px solid var(--violet);border-radius:9px;padding:13px 36px;
+  color:var(--vglow);font-family:'Cinzel',serif;font-size:12px;letter-spacing:3px;
+  cursor:pointer;transition:all .2s}
+.restart-btn:hover{background:rgba(124,92,191,.12);border-color:var(--soul);color:var(--soul)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes sparkIn{from{transform:translateY(-50%) scale(0) rotate(-90deg)}to{transform:translateY(-50%) scale(1) rotate(0)}}
+@keyframes dotP{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.6}}
+@keyframes skillReveal{0%{opacity:0;letter-spacing:8px}100%{opacity:1;letter-spacing:normal}}
+@media(max-width:600px){.card{padding:22px 18px}.rsec{padding:20px 18px}}
+</style>
+</head>
+<body>
+<canvas id="glCanvas"></canvas>
+<div id="app"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// WEBGL ENGINE — Custom GLSL particle + orb system
+// ═══════════════════════════════════════════════
+
+const GL = (() => {
+  const canvas = document.getElementById('glCanvas');
+  let gl, prog, orbProg, orbCanvas, orbGl;
+  let particleCount = 7000;
+  let positions, velocities, phases, sizes, colors;
+  let posBuf, sizBuf, colBuf;
+  let mouse = {x:0.5, y:0.5};
+  let time = 0;
+  let soulProgress = 0; // 0→1 as questions answered
+  let resonating = false;
+  let exploding = false;
+  let explodeT = 0;
+
+  // ── Main WebGL canvas (particles) ──
+  function initGL() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    gl = canvas.getContext('webgl', {alpha:true, premultipliedAlpha:false});
+    if (!gl) return;
+
+    const vsSrc = `
+      attribute vec2 a_pos;
+      attribute float a_size;
+      attribute vec3 a_col;
+      uniform vec2 u_res;
+      uniform float u_time;
+      uniform vec2 u_mouse;
+      uniform float u_progress;
+      uniform float u_explode;
+      varying vec3 v_col;
+      varying float v_alpha;
+      void main(){
+        vec2 p = a_pos;
+        // Mouse repulsion
+        vec2 dm = p - u_mouse;
+        float dist = length(dm);
+        float rep = smoothstep(0.18, 0.0, dist) * 0.06;
+        p += normalize(dm + vec2(0.001)) * rep;
+        // Explosion burst
+        if(u_explode > 0.0){
+          vec2 center = vec2(0.5, 0.5);
+          vec2 dir = normalize(p - center + vec2(0.001));
+          float burst = u_explode * 0.35 * (1.0 - u_explode * 0.5);
+          p += dir * burst;
+        }
+        vec2 clip = (p / u_res) * 2.0 - 1.0;
+        clip.y = -clip.y;
+        gl_Position = vec4(clip, 0.0, 1.0);
+        gl_PointSize = a_size * (0.8 + u_progress * 0.5);
+        v_col = a_col;
+        float flicker = 0.4 + 0.6 * abs(sin(u_time * 1.2 + a_pos.x * 3.0));
+        v_alpha = flicker * (0.3 + u_progress * 0.55);
+      }
+    `;
+    const fsSrc = `
+      precision mediump float;
+      varying vec3 v_col;
+      varying float v_alpha;
+      void main(){
+        vec2 c = gl_PointCoord - 0.5;
+        float d = length(c);
+        if(d > 0.5) discard;
+        float alpha = (1.0 - d * 2.0) * v_alpha;
+        // soft glow ring
+        float ring = smoothstep(0.3, 0.5, d) * 0.3;
+        gl_FragColor = vec4(v_col + ring * 0.3, alpha);
+      }
+    `;
+    prog = buildProgram(gl, vsSrc, fsSrc);
+
+    // Init particles
+    positions = new Float32Array(particleCount * 2);
+    velocities = new Float32Array(particleCount * 2);
+    phases = new Float32Array(particleCount);
+    sizes = new Float32Array(particleCount);
+    colors = new Float32Array(particleCount * 3);
+
+    for (let i = 0; i < particleCount; i++) {
+      // Spherical distribution around center
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const r = 0.15 + Math.random() * 0.35;
+      const cx = canvas.width * 0.5, cy = canvas.height * 0.5;
+      const scale = Math.min(canvas.width, canvas.height) * 0.5;
+      positions[i*2]   = cx + Math.sin(phi) * Math.cos(theta) * r * scale;
+      positions[i*2+1] = cy + Math.sin(phi) * Math.sin(theta) * r * scale * 0.7;
+      velocities[i*2]   = (Math.random()-0.5)*0.3;
+      velocities[i*2+1] = (Math.random()-0.5)*0.3;
+      phases[i] = Math.random() * Math.PI * 2;
+      sizes[i] = 1.2 + Math.random() * 2.5;
+      // Start violet
+      colors[i*3]   = 0.45 + Math.random()*0.2;
+      colors[i*3+1] = 0.25 + Math.random()*0.15;
+      colors[i*3+2] = 0.85 + Math.random()*0.15;
+    }
+
+    posBuf = gl.createBuffer();
+    sizBuf = gl.createBuffer();
+    colBuf = gl.createBuffer();
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+  }
+
+  function buildProgram(g, vs, fs) {
+    const v = g.createShader(g.VERTEX_SHADER);
+    g.shaderSource(v, vs); g.compileShader(v);
+    const f = g.createShader(g.FRAGMENT_SHADER);
+    g.shaderSource(f, fs); g.compileShader(f);
+    const p = g.createProgram();
+    g.attachShader(p,v); g.attachShader(p,f); g.linkProgram(p);
+    return p;
+  }
+
+  function updateParticles(dt) {
+    const cx = canvas.width*0.5, cy = canvas.height*0.5;
+    const scale = Math.min(canvas.width, canvas.height)*0.5;
+    const mx = mouse.x * canvas.width, my = mouse.y * canvas.height;
+
+    for (let i = 0; i < particleCount; i++) {
+      const px = positions[i*2], py = positions[i*2+1];
+
+      // Orbital drift
+      const ang = Math.atan2(py - cy, px - cx) + 0.004 + soulProgress*0.006;
+      const rad = Math.sqrt((px-cx)**2 + (py-cy)**2);
+      const targetR = (0.15 + (phases[i]%0.35)) * scale;
+      const restoreF = (targetR - rad) * 0.0015;
+      const ox = Math.cos(ang) * (rad + restoreF);
+      const oy = Math.sin(ang) * (rad + restoreF) * 0.7;
+      positions[i*2]   = cx + ox + velocities[i*2] * dt * 30;
+      positions[i*2+1] = cy + oy + velocities[i*2+1] * dt * 30;
+
+      // Dampen
+      velocities[i*2]   *= 0.97;
+      velocities[i*2+1] *= 0.97;
+
+      // Color morph violet → gold as progress grows
+      const t = Math.min(1, soulProgress * 1.4);
+      const flicker = 0.7 + 0.3 * Math.sin(time * 2 + phases[i]);
+      colors[i*3]   = (0.5 + 0.15*Math.random()) * flicker * (1 + t*0.5);
+      colors[i*3+1] = (0.28 + t*0.45) * flicker;
+      colors[i*3+2] = (0.88 - t*0.6) * flicker;
+
+      // Resonance shimmer
+      if (resonating) {
+        const pulse = Math.sin(time*4 + phases[i]*2) * 0.5 + 0.5;
+        colors[i*3]   += pulse * 0.2;
+        colors[i*3+1] += pulse * 0.15;
+        colors[i*3+2] += pulse * 0.05;
+      }
+    }
+  }
+
+  function drawParticles() {
+    if (!gl) return;
+    gl.viewport(0,0,canvas.width,canvas.height);
+    gl.clearColor(0,0,0,0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.useProgram(prog);
+
+    // Upload
+    gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW);
+    const aPos = gl.getAttribLocation(prog,'a_pos');
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos,2,gl.FLOAT,false,0,0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, sizBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, sizes, gl.DYNAMIC_DRAW);
+    const aSiz = gl.getAttribLocation(prog,'a_size');
+    gl.enableVertexAttribArray(aSiz);
+    gl.vertexAttribPointer(aSiz,1,gl.FLOAT,false,0,0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, colBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, colors, gl.DYNAMIC_DRAW);
+    const aCol = gl.getAttribLocation(prog,'a_col');
+    gl.enableVertexAttribArray(aCol);
+    gl.vertexAttribPointer(aCol,3,gl.FLOAT,false,0,0);
+
+    gl.uniform2f(gl.getUniformLocation(prog,'u_res'), canvas.width, canvas.height);
+    gl.uniform1f(gl.getUniformLocation(prog,'u_time'), time);
+    gl.uniform2f(gl.getUniformLocation(prog,'u_mouse'), mouse.x * canvas.width, mouse.y * canvas.height);
+    gl.uniform1f(gl.getUniformLocation(prog,'u_progress'), soulProgress);
+    gl.uniform1f(gl.getUniformLocation(prog,'u_explode'), explodeT);
+
+    gl.drawArrays(gl.POINTS, 0, particleCount);
+  }
+
+  // ── ORB WebGL (small canvas, sphere with displacement) ──
+  function initOrb(canvasEl) {
+    orbCanvas = canvasEl;
+    orbCanvas.width = 160; orbCanvas.height = 160;
+    orbGl = orbCanvas.getContext('webgl', {alpha:true, premultipliedAlpha:false, antialias:true});
+    if (!orbGl) return;
+
+    const vs = `
+      attribute vec3 a_pos;
+      attribute vec3 a_norm;
+      uniform float u_time;
+      uniform float u_progress;
+      uniform float u_resonating;
+      varying vec3 v_norm;
+      varying vec3 v_pos;
+      varying float v_disp;
+      // pseudo-noise
+      float hash(vec3 p){
+        p = fract(p * vec3(127.1, 311.7, 74.7));
+        p += dot(p, p.yxz + 19.19);
+        return fract((p.x + p.y) * p.z);
+      }
+      float noise(vec3 p){
+        vec3 i = floor(p); vec3 f = fract(p);
+        f = f*f*(3.0-2.0*f);
+        return mix(mix(mix(hash(i),hash(i+vec3(1,0,0)),f.x),
+                       mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),
+                   mix(mix(hash(i+vec3(0,0,1)),hash(i+vec3(1,0,1)),f.x),
+                       mix(hash(i+vec3(0,1,1)),hash(i+vec3(1,1,1)),f.x),f.y),f.z);
+      }
+      void main(){
+        float n = noise(a_pos * 3.0 + u_time * 0.4);
+        float n2 = noise(a_pos * 6.0 - u_time * 0.6) * 0.5;
+        float disp = (n + n2) * 0.12 * (0.5 + u_progress) * (1.0 + u_resonating * 0.8);
+        vec3 displaced = a_pos + a_norm * disp;
+        v_disp = disp;
+        v_norm = a_norm;
+        v_pos = displaced;
+        gl_Position = vec4(displaced * 0.82, 1.0);
+      }
+    `;
+    const fs = `
+      precision mediump float;
+      varying vec3 v_norm;
+      varying vec3 v_pos;
+      varying float v_disp;
+      uniform float u_time;
+      uniform float u_progress;
+      uniform float u_resonating;
+      void main(){
+        vec3 light = normalize(vec3(0.5, 0.8, 1.0));
+        float diff = max(dot(normalize(v_norm), light), 0.0) * 0.7 + 0.3;
+        float fresnel = pow(1.0 - abs(dot(normalize(v_norm), vec3(0,0,1))), 2.5);
+        // Color: violet→gold
+        vec3 coreViolet = vec3(0.55, 0.3, 0.95);
+        vec3 coreGold   = vec3(0.92, 0.72, 0.22);
+        vec3 core = mix(coreViolet, coreGold, u_progress);
+        vec3 edgeViolet = vec3(0.7, 0.5, 1.0);
+        vec3 edgeGold   = vec3(1.0, 0.88, 0.45);
+        vec3 edge = mix(edgeViolet, edgeGold, u_progress);
+        vec3 col = mix(core * diff, edge, fresnel);
+        // Displacement glow
+        col += vec3(0.3, 0.15, 0.6) * v_disp * 3.0 * (1.0-u_progress);
+        col += vec3(0.6, 0.45, 0.1) * v_disp * 3.0 * u_progress;
+        // Resonance shimmer
+        float pulse = sin(u_time * 5.0 + v_pos.y * 8.0) * 0.5 + 0.5;
+        col += mix(vec3(0.2,0.1,0.5), vec3(0.5,0.35,0.0), u_progress) * pulse * u_resonating * 0.4;
+        gl_FragColor = vec4(col, 0.92 + fresnel * 0.08);
+      }
+    `;
+    const orbShader = buildProgram(orbGl, vs, fs);
+
+    // Build sphere geometry
+    const latSegs = 48, lonSegs = 48;
+    const verts = [], norms = [], idxs = [];
+    for (let lat = 0; lat <= latSegs; lat++) {
+      const theta = lat * Math.PI / latSegs;
+      for (let lon = 0; lon <= lonSegs; lon++) {
+        const phi = lon * 2 * Math.PI / lonSegs;
+        const x = Math.sin(theta)*Math.cos(phi);
+        const y = Math.cos(theta);
+        const z = Math.sin(theta)*Math.sin(phi);
+        verts.push(x,y,z); norms.push(x,y,z);
+      }
+    }
+    for (let lat = 0; lat < latSegs; lat++) {
+      for (let lon = 0; lon < lonSegs; lon++) {
+        const a = lat*(lonSegs+1)+lon, b = a+lonSegs+1;
+        idxs.push(a,b,a+1,b,b+1,a+1);
+      }
+    }
+
+    const vBuf = orbGl.createBuffer();
+    orbGl.bindBuffer(orbGl.ARRAY_BUFFER, vBuf);
+    orbGl.bufferData(orbGl.ARRAY_BUFFER, new Float32Array(verts), orbGl.STATIC_DRAW);
+    const nBuf = orbGl.createBuffer();
+    orbGl.bindBuffer(orbGl.ARRAY_BUFFER, nBuf);
+    orbGl.bufferData(orbGl.ARRAY_BUFFER, new Float32Array(norms), orbGl.STATIC_DRAW);
+    const iBuf = orbGl.createBuffer();
+    orbGl.bindBuffer(orbGl.ELEMENT_ARRAY_BUFFER, iBuf);
+    orbGl.bufferData(orbGl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idxs), orbGl.STATIC_DRAW);
+
+    orbGl._shader = orbShader;
+    orbGl._vBuf = vBuf; orbGl._nBuf = nBuf; orbGl._iBuf = iBuf;
+    orbGl._idxCount = idxs.length;
+    orbGl.enable(orbGl.DEPTH_TEST);
+    orbGl.enable(orbGl.BLEND);
+    orbGl.blendFunc(orbGl.SRC_ALPHA, orbGl.ONE_MINUS_SRC_ALPHA);
+  }
+
+  function drawOrb() {
+    if (!orbGl) return;
+    const g = orbGl;
+    g.viewport(0,0,160,160);
+    g.clearColor(0,0,0,0);
+    g.clear(g.COLOR_BUFFER_BIT | g.DEPTH_BUFFER_BIT);
+    g.useProgram(g._shader);
+
+    g.bindBuffer(g.ARRAY_BUFFER, g._vBuf);
+    const aPos = g.getAttribLocation(g._shader,'a_pos');
+    g.enableVertexAttribArray(aPos);
+    g.vertexAttribPointer(aPos,3,g.FLOAT,false,0,0);
+
+    g.bindBuffer(g.ARRAY_BUFFER, g._nBuf);
+    const aNorm = g.getAttribLocation(g._shader,'a_norm');
+    g.enableVertexAttribArray(aNorm);
+    g.vertexAttribPointer(aNorm,3,g.FLOAT,false,0,0);
+
+    g.bindBuffer(g.ELEMENT_ARRAY_BUFFER, g._iBuf);
+
+    g.uniform1f(g.getUniformLocation(g._shader,'u_time'), time);
+    g.uniform1f(g.getUniformLocation(g._shader,'u_progress'), soulProgress);
+    g.uniform1f(g.getUniformLocation(g._shader,'u_resonating'), resonating ? 1.0 : 0.0);
+
+    g.drawElements(g.TRIANGLES, g._idxCount, g.UNSIGNED_SHORT, 0);
+  }
+
+  let lastT = 0;
+  function loop(t) {
+    const dt = Math.min((t - lastT)/1000, 0.05);
+    lastT = t; time = t * 0.001;
+
+    if (exploding) {
+      explodeT = Math.min(explodeT + dt * 0.8, 1.0);
+      if (explodeT >= 1.0) exploding = false;
+    } else if (explodeT > 0) {
+      explodeT = Math.max(explodeT - dt * 1.2, 0);
+    }
+
+    updateParticles(dt);
+    drawParticles();
+    drawOrb();
+    requestAnimationFrame(loop);
+  }
+
+  function onResize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+
+  window.addEventListener('mousemove', e => {
+    mouse.x = e.clientX / window.innerWidth;
+    mouse.y = e.clientY / window.innerHeight;
+  });
+  window.addEventListener('touchmove', e => {
+    mouse.x = e.touches[0].clientX / window.innerWidth;
+    mouse.y = e.touches[0].clientY / window.innerHeight;
+  }, {passive:true});
+  window.addEventListener('resize', onResize);
+
+  return {
+    init: initGL,
+    initOrb,
+    start: () => requestAnimationFrame(loop),
+    setProgress: v => { soulProgress = v },
+    setResonating: v => { resonating = v },
+    triggerExplosion: () => { exploding = true; explodeT = 0 }
+  };
+})();
+
+GL.init();
+GL.start();
+
+// ════════════════════════════════
+// QUESTIONS
+// ════════════════════════════════
+const QUESTIONS = [
+  {id:'q1',cat:'Core Nature',type:'choice',
+   text:'When you are completely alone and no one is watching — what do you most naturally gravitate toward?',
+   raphael:'The soul reveals itself most clearly in the absence of performance.',
+   choices:['Creating something — building, writing, designing, crafting','Understanding something — reading, researching, analyzing','Feeling something — music, art, silence, memory','Moving something — organizing, planning, solving, acting','Connecting with something — people, nature, spirit, memory']},
+  {id:'q2',cat:'Shadow',type:'choice',
+   text:'Which of these fears lives deepest in you — even if you rarely admit it?',
+   raphael:'Fear is not weakness. It is the shape of what the soul values most.',
+   choices:['Being forgotten — leaving no mark on the world','Being misunderstood — never being truly known','Being powerless — unable to protect what matters','Being wrong — flawed in judgment or belief','Being alone — fundamentally disconnected from others']},
+  {id:'q3',cat:'Memory',type:'open',
+   text:'Describe a moment — real or imagined — where you felt most fully yourself. What were you doing, and why did it feel like truth?',
+   raphael:'Memory is the soul\'s autobiography. The moments we return to are the ones that define us.',
+   placeholder:'Write freely. Raphael is listening...'},
+  {id:'q4',cat:'Contradiction',type:'choice',
+   text:'What do people most consistently misread about you?',
+   raphael:'The gap between how one is seen and who one is — that gap is where unique potential lives.',
+   choices:['They think I\'m cold, but I feel everything intensely','They think I\'m simple, but my inner world is vast','They think I\'m reckless, but everything I do is calculated','They think I\'m weak, but I endure more than they know','They think I\'m distant, but I care more deeply than I show']},
+  {id:'q5',cat:'Purpose',type:'open',
+   text:'If you were given unlimited power — but had to use it entirely in service of others — what would you spend it on?',
+   raphael:'Purpose is the lens through which raw soul-energy becomes a directed force.',
+   placeholder:'There are no wrong answers here...'},
+  {id:'q6',cat:'Threshold',type:'slider',
+   text:'How much of your true self do you show to the world?',
+   raphael:'The distance between the worn mask and the soul beneath determines the type of power that accumulates.',
+   min:'Almost nothing — I am a mystery to all',max:'Everything — I am entirely transparent',
+   minVal:0,maxVal:100,defaultVal:40},
+  {id:'q7',cat:'Regret',type:'open',
+   text:'What is the one thing you wish you had done differently — not to fix an outcome, but because it would have been more true to who you are?',
+   raphael:'Regret is the soul\'s compass. It points toward the self you were always meant to become.',
+   placeholder:'Speak without judgment...'},
+  {id:'q8',cat:'Primal Drive',type:'choice',
+   text:'When you encounter suffering — in yourself or others — what is your most instinctive response?',
+   raphael:'The instinct under pressure is the clearest signal of what the soul is built for.',
+   choices:['I want to fix it — remove the source of pain','I want to understand it — find out why it exists','I want to carry it — take the burden so others don\'t have to','I want to transcend it — turn suffering into meaning','I want to witness it — hold space without forcing resolution']},
+  {id:'q9',cat:'Self-Solidity',type:'slider',
+   text:'How strongly do you feel your own sense of self — your identity, your core — as something distinct and unshakeable?',
+   raphael:'The strength of the soul\'s core is the foundation upon which all unique skills are anchored.',
+   min:'I am fluid — I reshape around everything',max:'I am immovable — I reshape everything around me',
+   minVal:0,maxVal:100,defaultVal:50},
+  {id:'q10',cat:'Bond',type:'open',
+   text:'Who or what do you carry with you, even when they are absent? What weight do you willingly hold for them?',
+   raphael:'The soul that loves carries that love as both burden and power. What you carry shapes what you can bear.',
+   placeholder:'Name it. Honor it...'},
+  {id:'q11',cat:'Edge',type:'choice',
+   text:'At the absolute limit of your endurance — what keeps you moving?',
+   raphael:'It is not the peak of one\'s power that defines the soul. It is what remains at the edge of exhaustion.',
+   choices:['Stubbornness — I refuse to be beaten','Responsibility — others are depending on me','Curiosity — I need to see what comes next','Love — there is something or someone I am fighting for','Meaning — giving up would make everything before it pointless']},
+  {id:'q12',cat:'Legacy',type:'open',
+   text:'When you are gone — what do you want to have changed? Not what you want to be remembered as, but what do you want to be different because you existed?',
+   raphael:'The soul\'s deepest signature is not in what it takes — but in what it leaves behind.',
+   placeholder:'Write without modesty...'},
+  {id:'q13',cat:'Duality',type:'choice',
+   text:'Which truth resonates more deeply with how you experience your own existence?',
+   raphael:'The soul often contains two forces in tension. The skill that emerges is often the resolution of that tension.',
+   choices:['I am driven by order — I seek to understand, categorize, and master chaos','I am driven by chaos — I break structures to find what lies beneath','I am driven by growth — I exist to evolve beyond my current limits','I am driven by connection — meaning lives only between people','I am driven by truth — I need to see reality as it actually is']},
+  {id:'q14',cat:'Elemental Resonance',type:'choice',
+   text:'Without thinking — which force do you feel most kinship with?',
+   raphael:'Even in worlds without magic, souls carry elemental affinities. This is not metaphor. It is architecture.',
+   choices:['Fire — transformation, passion, destruction, renewal','Water — adaptability, depth, memory, erosion','Wind — freedom, speed, clarity, invisibility','Earth — endurance, permanence, weight, foundation','Void — space, potential, silence, the unknown','Light — revelation, guidance, warmth, exposure']},
+  {id:'q15',cat:'Final Witness',type:'open',
+   text:'If you could ask your own soul a single question — and it had to answer honestly — what would you ask?',
+   raphael:'The question you most want to ask your soul is, itself, the most revealing answer.',
+   placeholder:'Ask it. It is listening now...'}
+];
+
+// ════════════════════════════════
+// STATE & RENDER
+// ════════════════════════════════
+let S = { screen:'intro', q:0, answers:{}, sliders:{}, result:null, err:null };
+const app = document.getElementById('app');
+
+function render() {
+  const progress = S.q / QUESTIONS.length;
+  GL.setProgress(progress);
+  GL.setResonating(progress > 0.4);
+  if (S.screen==='intro') renderIntro();
+  else if (S.screen==='test') renderTest();
+  else if (S.screen==='loading') renderLoading();
+  else if (S.screen==='result') renderResult();
+}
+
+function renderIntro() {
+  app.innerHTML = `
+    <div class="hd">
+      <div class="eyebrow">Raphael · Soul Analysis System</div>
+      <h1>Soul Resonance<br>Calibration</h1>
+      <p class="hd-sub">An inquiry into the nature of your soul — to determine what unique skill has crystallized within you.</p>
+    </div>
+    <div class="orb-zone">
+      <div style="position:relative">
+        <canvas id="orbCanvas" width="160" height="160"></canvas>
+        <div class="orb-label" id="orbLabel">DORMANT</div>
+      </div>
+    </div>
+    <div class="intro">
+      <p>Every soul carries within it a latent skill — shaped by desire, shaped by fear, shaped by every moment you have lived and refused to live.</p>
+      <p>This analysis will ask you 15 questions. They will not always be comfortable. That is intentional.</p>
+      <p class="warn">Answer honestly. Raphael cannot be deceived — and neither can you.</p>
+      <button class="start-btn" onclick="startTest()">Begin Analysis</button>
+    </div>`;
+  afterRender();
+}
+
+function renderTest() {
+  const q = QUESTIONS[S.q];
+  const pct = (S.q / QUESTIONS.length) * 100;
+  const progLeft = Math.max(0, pct - 2);
+  app.innerHTML = `
+    <div class="hd" style="padding-bottom:20px">
+      <div class="eyebrow">Raphael · Soul Analysis System</div>
+    </div>
+    <div class="orb-zone">
+      <div style="position:relative">
+        <canvas id="orbCanvas" width="160" height="160"></canvas>
+        <div class="orb-label ${pct>40?'gold':''}" id="orbLabel">${pct>40?'RESONATING':'CALIBRATING'}</div>
+      </div>
+    </div>
+    <div class="prog-wrap">
+      <div class="prog-fill" style="width:${pct}%"></div>
+      <div class="prog-glow" style="left:${progLeft}%"></div>
+    </div>
+    <div class="card">
+      <div class="q-meta">
+        <span class="q-num">QUESTION ${S.q+1} / ${QUESTIONS.length}</span>
+        <span class="q-cat">${q.cat}</span>
+      </div>
+      <div class="q-text">${q.text}</div>
+      <div class="r-note">「 ${q.raphael} 」</div>
+      ${renderInput(q)}
+      ${S.err?`<div class="err-msg">${S.err}</div>`:''}
+      <div class="nav-row">
+        ${S.q>0?`<button class="btn-back" onclick="goBack()">← Back</button>`:''}
+        <button class="btn-next" onclick="goNext()">
+          ${S.q<QUESTIONS.length-1?'Continue →':'Complete Analysis'}
+        </button>
+      </div>
+    </div>`;
+  afterRender();
+  if (q.type==='slider') {
+    const el = document.getElementById('sl_'+q.id);
+    const val = S.sliders[q.id]??q.defaultVal;
+    if(el){el.value=val; updateSlVal(q.id,val);}
+  }
+}
+
+function renderInput(q) {
+  if (q.type==='choice') {
+    const sv = S.answers[q.id];
+    return `<div class="choices">${q.choices.map((c,i)=>
+      `<button class="cbtn${sv===i?' sel':''}" onclick="pick('${q.id}',${i},this)">${c}</button>`
+    ).join('')}</div>`;
+  }
+  if (q.type==='open') {
+    const sv = S.answers[q.id]||'';
+    return `<textarea class="otxt" id="ot_${q.id}" placeholder="${q.placeholder}" oninput="S.answers['${q.id}']=this.value">${sv}</textarea>`;
+  }
+  if (q.type==='slider') {
+    const val = S.sliders[q.id]??q.defaultVal;
+    return `<div class="sl-wrap">
+      <div class="sl-labels"><span>${q.min}</span><span>${q.max}</span></div>
+      <input type="range" id="sl_${q.id}" min="${q.minVal}" max="${q.maxVal}" value="${val}"
+        oninput="onSl('${q.id}',this.value)"/>
+      <div class="sl-val" id="sv_${q.id}"></div>
+    </div>`;
+  }
+}
+
+function renderLoading() {
+  const steps = [
+    'Parsing soul resonance pattern...',
+    'Cross-referencing with skill taxonomy...',
+    'Analyzing elemental affinities...',
+    'Detecting latent contradictions...',
+    'Crystallizing unique skill signature...'
+  ];
+  app.innerHTML = `
+    <div class="hd" style="padding-bottom:20px">
+      <div class="eyebrow">Raphael · Soul Analysis System</div>
+    </div>
+    <div class="orb-zone">
+      <div style="position:relative">
+        <canvas id="orbCanvas" width="160" height="160"></canvas>
+        <div class="orb-label gold" id="orbLabel">CRYSTALLIZING</div>
+      </div>
+    </div>
+    <div class="loading">
+      <h2>Analysis in Progress</h2>
+      <p>Raphael is reading the shape of your soul.</p>
+      <div class="steps" id="stepsEl">
+        ${steps.map((s,i)=>`<div class="step" id="st${i}"><div class="sdot"></div><span>${s}</span></div>`).join('')}
+      </div>
+    </div>`;
+  afterRender();
+  let i=0;
+  const tick=()=>{
+    if(i>0){const p=document.getElementById('st'+(i-1));if(p){p.classList.remove('active');p.classList.add('done');}}
+    if(i<steps.length){const c=document.getElementById('st'+i);if(c)c.classList.add('active');i++;setTimeout(tick,900);}
+  };
+  tick();
+}
+
+function renderResult() {
+  const r = S.result;
+  GL.triggerExplosion();
+  app.innerHTML = `
+    <div class="result">
+      <div class="r-hdr">
+        <div class="r-eye">UNIQUE SKILL IDENTIFIED</div>
+        <div class="skill-name">${r.skillName}</div>
+        <div class="skill-rank">${r.skillRank||'Unique Skill'}</div>
+      </div>
+      <div class="r-div">✦ ✦ ✦</div>
+      <div class="orb-zone" style="margin-bottom:32px">
+        <div style="position:relative">
+          <canvas id="orbCanvas" width="160" height="160"></canvas>
+          <div class="orb-label gold" id="orbLabel">AWAKENED</div>
+        </div>
+      </div>
+      <div class="rsec">
+        <h3>SKILL DESCRIPTION</h3>
+        <p>${r.skillDescription}</p>
+      </div>
+      <div class="rsec">
+        <h3>CORE ABILITIES</h3>
+        <ul>${(r.abilities||[]).map(a=>`<li>${a}</li>`).join('')}</ul>
+      </div>
+      <div class="rsec">
+        <h3>WHY THIS SKILL IS YOURS</h3>
+        <p>${r.whyThisSkill}</p>
+        <div class="r-quote">「 ${r.raphaelNote} 」</div>
+      </div>
+      ${r.evolutionHint?`<div class="rsec"><h3>RAPHAEL'S OBSERVATION</h3><p>${r.evolutionHint}</p></div>`:''}
+      <button class="restart-btn" onclick="restartTest()">Begin Again</button>
+    </div>`;
+  afterRender();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function afterRender() {
+  const oc = document.getElementById('orbCanvas');
+  if(oc) GL.initOrb(oc);
+}
+
+// ════════════════════════════════
+// INTERACTIONS
+// ════════════════════════════════
+function startTest(){S.screen='test';S.q=0;render();window.scrollTo({top:0,behavior:'smooth'});}
+function pick(id,idx,btn){
+  S.answers[id]=idx; S.err=null;
+  document.querySelectorAll('.cbtn').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+}
+function onSl(id,v){S.sliders[id]=parseInt(v);S.answers[id]=parseInt(v);updateSlVal(id,v);}
+function updateSlVal(id,v){
+  const el=document.getElementById('sv_'+id); if(!el) return;
+  const p=parseInt(v);
+  el.textContent=p<20?'Hidden · '+p+'%':p<40?'Guarded · '+p+'%':p<60?'Balanced · '+p+'%':p<80?'Open · '+p+'%':'Transparent · '+p+'%';
+}
+function goNext(){
+  const q=QUESTIONS[S.q];
+  if(q.type==='choice'&&S.answers[q.id]===undefined){S.err='Raphael awaits your answer.';render();return;}
+  if(q.type==='open'&&(S.answers[q.id]||'').trim().length<10){S.err='The soul requires more than silence.';render();return;}
+  if(q.type==='slider'&&S.answers[q.id]===undefined){S.answers[q.id]=q.defaultVal;S.sliders[q.id]=q.defaultVal;}
+  S.err=null;
+  if(S.q<QUESTIONS.length-1){S.q++;render();window.scrollTo({top:0,behavior:'smooth'});}
+  else submitAnalysis();
+}
+function goBack(){if(S.q>0){S.q--;S.err=null;render();window.scrollTo({top:0,behavior:'smooth'});}}
+function restartTest(){S={screen:'intro',q:0,answers:{},sliders:{},result:null,err:null};render();window.scrollTo({top:0,behavior:'smooth'});}
+
+// ════════════════════════════════
+// AI CALL
+// ════════════════════════════════
+async function submitAnalysis(){
+  S.screen='loading'; render();
+  const summary = QUESTIONS.map(q=>{
+    let a=S.answers[q.id];
+    if(q.type==='choice'&&a!==undefined) a=q.choices[a];
+    else if(q.type==='slider') a=`${a}/100 (${q.min} → ${q.max})`;
+    return `[${q.cat}] ${q.text}\nAnswer: ${a??'(not answered)'}`;
+  }).join('\n\n');
+
+  const prompt=`You are Raphael, the Lord of Wisdom — an ultimate skill being from the world of Tensura (That Time I Got Reincarnated as a Slime). You have just completed a deep soul resonance analysis of a person.
+
+Based on their answers below, determine their UNIQUE SKILL. This may be a canon Tensura skill or an entirely original one you create — in fact, prefer creating something original unless the soul pattern perfectly matches a known skill. Be creative, precise, and deeply grounded in what they actually wrote.
+
+=== SOUL ANALYSIS DATA ===
+${summary}
+=== END DATA ===
+
+Respond ONLY in valid JSON, no preamble, no backticks:
+
+{
+  "skillName": "Name of the Unique Skill (creative, Tensura-style naming conventions)",
+  "skillRank": "Unique Skill",
+  "skillDescription": "2-3 sentences describing what the skill does, in lore-accurate Tensura style. Make it feel real and powerful.",
+  "abilities": ["Ability 1: clear description", "Ability 2: clear description", "Ability 3: clear description", "Ability 4: clear description"],
+  "whyThisSkill": "2-3 sentences explaining with psychological and soul-level depth why THIS specific skill matches THIS person — reference their actual words and answers",
+  "raphaelNote": "One sentence spoken directly by Raphael to this person — precise, penetrating, slightly unsettling in its accuracy. First person.",
+  "evolutionHint": "One sentence hinting at what this skill could become if the soul continues to grow."
+}`;
+
+  try {
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
+        messages:[{role:'user',content:prompt}]})
+    });
+    const data=await res.json();
+    const raw=data.content.map(b=>b.text||'').join('');
+    const clean=raw.replace(/```json|```/g,'').trim();
+    S.result=JSON.parse(clean);
+    S.screen='result';
+    render();
+  } catch(e){
+    S.screen='test'; S.q=QUESTIONS.length-1;
+    S.err='Raphael encountered an anomaly in the soul fabric. Please try again.';
+    render();
+  }
+}
+
+render();
+</script>
+</body>
+</html>
